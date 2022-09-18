@@ -1,0 +1,6 @@
+.vagrant
+share
+overlays
+tap-values.yml
+kubeconfig
+bk
