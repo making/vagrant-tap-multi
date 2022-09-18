@@ -221,10 +221,9 @@ ootb_supply_chain_basic:
     server: ghcr.io
     repository: ${GITHUB_USERNAME}/supply-chain
   gitops:
-    ssh_secret: git-ssh
+    ssh_secret: ""
 
 contour:
-  infrastructure_provider: azure
   envoy:
     service:
       type: LoadBalancer
