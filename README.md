@@ -9,6 +9,7 @@ sudo apt install -y virtualbox virtualbox-ext-pack vagrant
 
 ```
 vagrant plugin install vagrant-hosts
+vagrant plugin install vagrant-disksize
 ```
 
 ```
@@ -27,6 +28,9 @@ vagrant ssh controlplane-1 -c "microk8s config | sed \"s/10.0.2.15/\$(ip a show 
 kubectl get pod -A -owide --kubeconfig kubeconfig
 ```
 
+```
+ kubectl taint nodes controlplane-1 node-role.kubernetes.io/master:NoSchedule --kubeconfig kubeconfig
+```
 
 ```
 curl -sL https://github.com/vmware-tanzu/carvel-kapp-controller/releases/latest/download/release.yml | kubectl apply -f-

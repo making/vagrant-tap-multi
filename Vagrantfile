@@ -16,6 +16,7 @@ Vagrant.configure("2") do |config|
         v.cpus = 1
         v.memory = 1024
       end
+      c.disksize.size = '500GB'
 
       c.vm.provision :shell, :path => "scripts/setup-initial-ubuntu.sh"
       c.vm.provision :shell, :path => "scripts/setup-nfs.sh"
@@ -33,7 +34,7 @@ Vagrant.configure("2") do |config|
         v.cpus = 2
         v.memory = 4096
       end
-
+      c.disksize.size = '70GB'
       c.vm.provision :shell, :path => "scripts/setup-initial-ubuntu.sh"
       c.vm.provision :shell, :path => "scripts/setup-microk8s.sh"
       c.vm.provision :shell, :path => "scripts/setup-microk8s-controlplane.sh"
@@ -51,7 +52,7 @@ Vagrant.configure("2") do |config|
         v.cpus = 2
         v.memory = 4096
       end
-
+      c.disksize.size = '70GB'
       c.vm.provision :shell, :path => "scripts/setup-initial-ubuntu.sh"
       c.vm.provision :shell, :path => "scripts/setup-microk8s.sh"
       c.vm.provision :shell, :path => "scripts/setup-microk8s-worker.sh"
