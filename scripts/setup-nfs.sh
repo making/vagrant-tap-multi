@@ -11,7 +11,7 @@ if [ ! -f ${VAGRANT_PROVISION}/nfs ];then
   sudo chown nobody:nogroup /srv/nfs
   sudo chmod 0777 /srv/nfs
   sudo mv /etc/exports /etc/exports.bak
-  echo "/srv/nfs *(rw,sync,no_subtree_check,no_root_squash)" | sudo tee /etc/exports
+  echo "/srv/nfs 192.168.56.0/24(rw,sync,no_subtree_check,no_root_squash)" | sudo tee /etc/exports
   sudo systemctl restart nfs-kernel-server
   touch ${VAGRANT_PROVISION}/nfs  
 fi

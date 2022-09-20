@@ -53,7 +53,7 @@ tanzu package repository add tanzu-tap-repository \
   --namespace tap-install
 ```
 
-```
+```yaml
 ENVOY_IP=$(vagrant ssh controlplane-1 -c "ip a show enp0s8 | grep inet | grep -v inet6 | awk '{print \$2}' | cut -f1 -d/" | awk -F '.' '{print $1 "." $2 "." $3}').240
 mkdir -p overlays
 cat <<EOF > overlays/contour-loadbalancer-ip.yml
@@ -163,7 +163,7 @@ EOF
 ```
 
 
-```
+```yaml
 cat <<'EOF' > create-repository-secret.sh
 #!/bin/bash
 REGISTRY_SERVER=$1
@@ -191,7 +191,7 @@ EOF
 chmod +x create-repository-secret.sh
 ```
 
-```
+```yaml
 GITHUB_USERNAME=...
 GITHUB_API_TOKEN=...
 
