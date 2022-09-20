@@ -242,14 +242,6 @@ tap_gui:
       baseUrl: https://tap-gui.${DOMAIN_NAME}
       cors:
         origin: https://tap-gui.${DOMAIN_NAME}
-    catalog:
-      locations:
-      - type: url
-        target: https://github.com/sample-accelerators/tanzu-java-web-app/blob/main/catalog/catalog-info.yaml
-      - type: url
-        target: https://github.com/sample-accelerators/spring-petclinic/blob/accelerator/catalog/catalog-info.yaml
-      - type: url
-        target: https://github.com/tanzu-japan/spring-music/blob/tanzu/catalog/catalog-info.yaml
 
 accelerator:
   domain: ${DOMAIN_NAME}  
