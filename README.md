@@ -25,11 +25,14 @@ vagrant ssh controlplane-1 -c "microk8s config | sed \"s/10.0.2.15/\$(ip a show 
 ```
 
 ```
-kubectl get pod -A -owide --kubeconfig kubeconfig
+export KUBEECONFIG=kubeconfig
+kubectl get pod -A -owide
 ```
 
 ```
- kubectl taint nodes controlplane-1 node-role.kubernetes.io/master:NoSchedule --kubeconfig kubeconfig
+kubectl taint nodes controlplane-1 node-role.kubernetes.io/master:NoSchedule
+kubectl taint nodes controlplane-1 node-role.kubernetes.io/master:NoExecute
+kubectl taint nodes controlplane-1 node-role.kubernetes.io/master:NoExecute-
 ```
 
 ```
