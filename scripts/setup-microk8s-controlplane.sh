@@ -16,7 +16,7 @@ if [ ! -f ${VAGRANT_PROVISION}/microk8s-addons ];then
   sudo microk8s enable rbac
   sudo microk8s enable dns
   sudo microk8s enable metrics-server
-  sudo microk8s enable metallb:$(echo $IPADDR | awk -F '.' '{print $1 "." $2 "." $3}').200-$(echo $IPADDR | awk -F '.' '{print $1 "." $2 "." $3}').254
+  sudo microk8s enable metallb:$(echo $IPADDR | awk -F '.' '{print $1 "." $2 "." $3}').220-$(echo $IPADDR | awk -F '.' '{print $1 "." $2 "." $3}').254
   touch ${VAGRANT_PROVISION}/microk8s-addons
 fi
 
