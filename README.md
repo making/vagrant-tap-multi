@@ -21,7 +21,9 @@ vagrant up --provision
 
 
 ```
-vagrant ssh controlplane-1 -c "microk8s config | sed \"s/10.0.2.15/\$(ip a show enp0s8 | grep inet | grep -v inet6 | awk '{print \$2}' | cut -f1 -d/)/\"" > kubeconfig
+vagrant ssh controlplane-1 -c "microk8s config | sed \"s/10.0.2.15/\$(ip a show enp0s8 | grep inet | grep -v inet6 | awk '{print \$2}' | cut -f1 -d/)/\"" > kubeconfig-1
+vagrant ssh controlplane-2 -c "microk8s config | sed \"s/10.0.2.15/\$(ip a show enp0s8 | grep inet | grep -v inet6 | awk '{print \$2}' | cut -f1 -d/)/\"" > kubeconfig-2
+vagrant ssh controlplane-3 -c "microk8s config | sed \"s/10.0.2.15/\$(ip a show enp0s8 | grep inet | grep -v inet6 | awk '{print \$2}' | cut -f1 -d/)/\"" > kubeconfig-3
 ```
 
 ```

@@ -2,5 +2,5 @@
 share
 overlays
 tap-values.yml
-kubeconfig
+kubeconfig*
 bk

@@ -1,14 +1,15 @@
 #!/bin/bash
 set -exuo pipefail
 
+CP_NAME=$1
 VAGRANT_PROVISION=/var/vagrant/provision
 
 IPADDR=$(ip a show enp0s8 | grep inet | grep -v inet6 | awk '{print $2}' | cut -f1 -d/)
 
-if [ ! -f /share/microk8s-add-node ];then
+if [ ! -f /share/microk8s-add-node-${CP_NAME} ];then
   microk8s add-node --token-ttl 3600 | grep ${IPADDR} | tee /tmp/microk8s-add-node
-  echo "$(cat /tmp/microk8s-add-node) --worker --skip-verify" | tee /share/microk8s-add-node
-  chmod +x /share/microk8s-add-node
+  echo "$(cat /tmp/microk8s-add-node) --worker --skip-verify" | tee /share/microk8s-add-node-${CP_NAME}
+  chmod +x /share/microk8s-add-node-${CP_NAME}
 fi
 
 if [ ! -f ${VAGRANT_PROVISION}/microk8s-addons ];then
