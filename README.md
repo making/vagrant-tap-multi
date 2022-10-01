@@ -21,9 +21,10 @@ vagrant up --provision
 
 
 ```
-vagrant ssh controlplane-1 -c "microk8s config | sed \"s/10.0.2.15/\$(ip a show enp0s8 | grep inet | grep -v inet6 | awk '{print \$2}' | cut -f1 -d/)/\"" > kubeconfig-1
-vagrant ssh controlplane-2 -c "microk8s config | sed \"s/10.0.2.15/\$(ip a show enp0s8 | grep inet | grep -v inet6 | awk '{print \$2}' | cut -f1 -d/)/\"" > kubeconfig-2
-vagrant ssh controlplane-3 -c "microk8s config | sed \"s/10.0.2.15/\$(ip a show enp0s8 | grep inet | grep -v inet6 | awk '{print \$2}' | cut -f1 -d/)/\"" > kubeconfig-3
+vagrant ssh controlplane-1 -c "microk8s config | sed \"s/10.0.2.15/\$(ip a show enp0s8 | grep inet | grep -v inet6 | awk '{print \$2}' | cut -f1 -d/)/\"" | sed  's/microk8s/tap-run/g' | sed  's/admin/admin-run/g'> kubeconfig-run
+vagrant ssh controlplane-2 -c "microk8s config | sed \"s/10.0.2.15/\$(ip a show enp0s8 | grep inet | grep -v inet6 | awk '{print \$2}' | cut -f1 -d/)/\"" | sed  's/microk8s/tap-build/g' | sed  's/admin/admin-build/g' > kubeconfig-build
+vagrant ssh controlplane-3 -c "microk8s config | sed \"s/10.0.2.15/\$(ip a show enp0s8 | grep inet | grep -v inet6 | awk '{print \$2}' | cut -f1 -d/)/\"" | sed  's/microk8s/tap-view/g' | sed  's/admin/admin-view/g' > kubeconfig-view
+KUBECONFIG=kubeconfig-run:kubeconfig-build:kubeconfig-view kubectl config view --flatten > kubeconfig
 ```
 
 ```
