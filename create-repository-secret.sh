@@ -2,7 +2,8 @@
 REGISTRY_SERVER=$1
 REGUSTRY_USERNAME=$2
 REGUSTRY_PASSWORD=$3
-cat <<SCRIPT | kubectl apply -f -
+KUBECONFIG=$4
+cat <<SCRIPT | kubectl apply -f - --kubeconfig ${KUBECONFIG}
 apiVersion: v1
 kind: Secret
 metadata:

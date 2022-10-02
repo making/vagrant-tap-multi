@@ -1,6 +1,8 @@
 .vagrant
 share
 overlays
-tap-values.yml
+tap-values*.yml
 kubeconfig*
 bk
+tap-gui
+rbac.yaml
