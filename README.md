@@ -1208,3 +1208,38 @@ Greetings from Spring Boot + Tanzu!
 
 <img width="1024" alt="image" src="https://user-images.githubusercontent.com/106908/193465661-9acde09c-071f-4da1-972d-652eb3997ffb.png">
 
+TAP 1.2 and below do not support self-signed TLS communication between ALV connector and server. It will be supported in TAP1.3.
+To communicate between ALV connector and server in TAP 1.2 multi cluster, TLS communication by trusted CA or plaintext (HTTP) must be used.
+The following changes are required for plaintext communication.
+
+`tap-values-view.yaml`
+
+```yaml
+tap-gui: # ...
+
+# comment out bellow
+
+# appliveview:
+#   tls:
+#     secretName: tap-default-tls
+#     namespace: tanzu-system-ingress
+```
+
+```
+tanzu package installed update -n tap-install tap -f tap-values-view.yml --kubeconfig kubeconfig-view 
+```
+
+`tap-values-run.yaml`
+
+```yaml
+appliveview_connector:
+  backend:
+    sslDisabled: "true"
+    host: appliveview.${DOMAIN_NAME_VIEW}
+```
+
+```
+tanzu package installed update -n tap-install tap -f tap-values-run.yml --kubeconfig kubeconfig-run
+```
+
+<img width="1024" alt="image" src="https://user-images.githubusercontent.com/106908/193468064-b35d4375-dcd0-4312-885f-e522732cd60e.png">
