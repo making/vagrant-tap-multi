@@ -323,6 +323,10 @@ tap_gui:
       baseUrl: https://tap-gui.${DOMAIN_NAME_VIEW}
       cors:
         origin: https://tap-gui.${DOMAIN_NAME_VIEW}
+    catalog:
+      locations:
+      - type: url
+        target: https://github.com/sample-accelerators/tanzu-java-web-app/blob/main/catalog/catalog-info.yaml        
     kubernetes:
       serviceLocatorMethod:
         type: multiTenant
@@ -798,6 +802,15 @@ spec:
     - "*"
 EOF
 
+cat <<EOF > overlays/run/cnrs-https.yml
+#@ load("@ytt:overlay", "overlay")
+#@overlay/match by=overlay.subset({"metadata":{"name":"config-network"}, "kind": "ConfigMap"})
+---
+data:
+  #@overlay/match missing_ok=True
+  default-external-scheme: https
+EOF
+
 cat <<EOF > overlays/run/cnrs-slim.yml
 #@ load("@ytt:overlay", "overlay")
 #@overlay/match by=overlay.subset({"metadata":{"namespace":"knative-eventing"}}), expects="1+"
@@ -861,6 +874,7 @@ package_overlays:
 - name: cnrs
   secrets:
   - name: cnrs-slim
+  - name: cnrs-https
 - name: tap-telemetry
   secrets:
   - name: tap-telemetry-remove
@@ -878,6 +892,12 @@ kubectl -n tap-install create secret generic contour-default-tls \
   -o yaml \
   --dry-run=client \
   --from-file=overlays/run/contour-default-tls.yml \
+  | kubectl apply -f- --kubeconfig kubeconfig-run
+
+kubectl -n tap-install create secret generic cnrs-https \
+  -o yaml \
+  --dry-run=client \
+  --from-file=overlays/run/cnrs-https.yml \
   | kubectl apply -f- --kubeconfig kubeconfig-run
 
 kubectl -n tap-install create secret generic cnrs-slim \
@@ -1103,3 +1123,88 @@ stern -n demo tanzu-java-web-app --kubeconfig kubeconfig-build
 # or
 tanzu apps workload tail tanzu-java-web-app -n demo --since 1h --kubeconfig kubeconfig-build
 ```
+
+```
+$ tanzu apps workload get tanzu-java-web-app -n demo --kubeconfig kubeconfig-build
+
+---
+# tanzu-java-web-app: Ready
+---
+Source
+type:     git
+url:      https://github.com/sample-accelerators/tanzu-java-web-app
+branch:   main
+
+Supply Chain
+name:          source-to-url
+last update:   25m
+ready:         True
+
+RESOURCE          READY   TIME
+source-provider   True    64m
+deliverable       True    64m
+image-builder     True    27m
+config-provider   True    27m
+app-config        True    27m
+config-writer     True    25m
+
+Issues
+No issues reported.
+
+Pods
+NAME                                         STATUS      RESTARTS   AGE
+tanzu-java-web-app-build-1-build-pod         Succeeded   0          64m
+tanzu-java-web-app-config-writer-29qzd-pod   Succeeded   0          27m
+
+To see logs: "tanzu apps workload tail tanzu-java-web-app --namespace demo"
+```
+
+```
+$ kubectl get workload,deliverable -n demo --kubeconfig kubeconfig-build 
+NAME                                    SOURCE                                                      SUPPLYCHAIN     READY   REASON   AGE
+workload.carto.run/tanzu-java-web-app   https://github.com/sample-accelerators/tanzu-java-web-app   source-to-url   True    Ready    7h51m
+
+NAME                                       SOURCE                                                                                            DELIVERY   READY   REASON             AGE
+deliverable.carto.run/tanzu-java-web-app   ghcr.io/making/supply-chain/tanzu-java-web-app-demo-bundle:6b8251bc-1afb-4875-9b1e-cbcebf62215c              False   DeliveryNotFound   7h51m
+```
+
+```
+kubectl create ns demo --kubeconfig kubeconfig-run
+kubectl apply -f rbac.yaml -n demo --kubeconfig kubeconfig-run
+```
+
+```
+tanzu secret registry add registry-credentials --server ghcr.io --username ${GITHUB_USERNAME} --password ${GITHUB_API_TOKEN} --namespace demo --kubeconfig kubeconfig-run
+```
+
+```
+kubectl get deliverable -n demo --kubeconfig kubeconfig-build tanzu-java-web-app -oyaml \
+| kubectl neat \
+| kubectl apply -f - --kubeconfig kubeconfig-run
+```
+
+
+```
+$ kubectl get deliverable -n demo --kubeconfig kubeconfig-run
+NAME                 SOURCE                                                                                            DELIVERY         READY   REASON   AGE
+tanzu-java-web-app   ghcr.io/making/supply-chain/tanzu-java-web-app-demo-bundle:6b8251bc-1afb-4875-9b1e-cbcebf62215c   delivery-basic   True    Ready    26s
+```
+
+```
+$ kubectl get ksvc,pod -n demo                                                                       
+NAME                                             URL                                                       LATESTCREATED              LATESTREADY                READY   REASON
+service.serving.knative.dev/tanzu-java-web-app   https://tanzu-java-web-app-demo.192-168-11-220.sslip.io   tanzu-java-web-app-00001   tanzu-java-web-app-00001   True    
+
+NAME                                                       READY   STATUS    RESTARTS   AGE
+pod/tanzu-java-web-app-00001-deployment-7b58699fdc-b4s2j   2/2     Running   0          27m
+```
+
+```
+$ curl -k $(kubectl get ksvc -n demo tanzu-java-web-app  -ojsonpath='{.status.url}' --kubeconfig kubeconfig-run) 
+Greetings from Spring Boot + Tanzu!
+```
+
+<img width="1024" alt="image" src="https://user-images.githubusercontent.com/106908/193465359-7031b1ec-5a6d-4a84-b558-9674a774032d.png">
+
+<img width="1024" alt="image" src="https://user-images.githubusercontent.com/106908/193465661-9acde09c-071f-4da1-972d-652eb3997ffb.png">
+
