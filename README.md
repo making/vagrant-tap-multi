@@ -1,16 +1,22 @@
 # Tanzu Application Platform on microk8s on Vagrant
 
+
+## Install Vagrant and VirtualBox
+
+
 ```
 brew install vagrant virtualbox virtualbox-extension-pack
 # or
 sudo apt install -y virtualbox virtualbox-ext-pack vagrant
 ```
 
-
 ```
 vagrant plugin install vagrant-hosts
 vagrant plugin install vagrant-disksize
 ```
+
+## Provision k8s vms
+
 
 ```
 git clone https://github.com/making/vagrant-tap.git
@@ -19,6 +25,7 @@ rm -f share/microk8s-add-node
 vagrant up --provision
 ```
 
+Retrieve k8s configs.
 
 ```
 vagrant ssh controlplane-1 -c "microk8s config | sed \"s/10.0.2.15/\$(ip a show enp0s8 | grep inet | grep -v inet6 | awk '{print \$2}' | cut -f1 -d/)/\"" | sed  's/microk8s/tap-run/g' | sed  's/admin/admin-run/g'> kubeconfig-run
@@ -27,26 +34,15 @@ vagrant ssh controlplane-3 -c "microk8s config | sed \"s/10.0.2.15/\$(ip a show 
 KUBECONFIG=kubeconfig-run:kubeconfig-build:kubeconfig-view kubectl config view --flatten > kubeconfig
 ```
 
+Check the node and pod status on each cluster.
+
 ```
 kubectl get node,pod -A -owide --kubeconfig kubeconfig-run
 kubectl get node,pod -A -owide --kubeconfig kubeconfig-build
 kubectl get node,pod -A -owide --kubeconfig kubeconfig-view
 ```
 
-```
-kubectl taint nodes controlplane-1 node-role.kubernetes.io/master:NoSchedule --kubeconfig kubeconfig-run
-kubectl taint nodes controlplane-1 node-role.kubernetes.io/master:NoExecute --kubeconfig kubeconfig-run
-kubectl taint nodes controlplane-1 node-role.kubernetes.io/master:NoSchedule- --kubeconfig kubeconfig-run
-kubectl taint nodes controlplane-1 node-role.kubernetes.io/master:NoExecute- --kubeconfig kubeconfig-run
-kubectl taint nodes controlplane-2 node-role.kubernetes.io/master:NoSchedule --kubeconfig kubeconfig-build
-kubectl taint nodes controlplane-2 node-role.kubernetes.io/master:NoExecute --kubeconfig kubeconfig-build
-kubectl taint nodes controlplane-2 node-role.kubernetes.io/master:NoSchedule- --kubeconfig kubeconfig-build
-kubectl taint nodes controlplane-2 node-role.kubernetes.io/master:NoExecute- --kubeconfig kubeconfig-build
-kubectl taint nodes controlplane-3 node-role.kubernetes.io/master:NoSchedule --kubeconfig kubeconfig-view
-kubectl taint nodes controlplane-3 node-role.kubernetes.io/master:NoExecute --kubeconfig kubeconfig-view
-kubectl taint nodes controlplane-3 node-role.kubernetes.io/master:NoSchedule- --kubeconfig kubeconfig-view
-kubectl taint nodes controlplane-3 node-role.kubernetes.io/master:NoExecute- --kubeconfig kubeconfig-view
-```
+Install kapp-controller and secretgen-controller on each cluster.
 
 ```
 curl -sL https://github.com/vmware-tanzu/carvel-kapp-controller/releases/latest/download/release.yml | kubectl apply -f- --kubeconfig kubeconfig-run
@@ -1208,7 +1204,7 @@ Greetings from Spring Boot + Tanzu!
 
 <img width="1024" alt="image" src="https://user-images.githubusercontent.com/106908/193465661-9acde09c-071f-4da1-972d-652eb3997ffb.png">
 
-TAP 1.2 and below do not support self-signed TLS communication between ALV connector and server. It will be supported in TAP1.3.
+TAP 1.2 and below do not support self-signed TLS communication between ALV connector and server. It will be supported in TAP 1.3.
 To communicate between ALV connector and server in TAP 1.2 multi cluster, TLS communication by trusted CA or plaintext (HTTP) must be used.
 The following changes are required for plaintext communication.
 
