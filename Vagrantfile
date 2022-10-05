@@ -44,8 +44,8 @@ Vagrant.configure("2") do |config|
     c.vm.network "private_network", ip: "192.168.56.61"
     c.vm.provider "virtualbox" do |v|
       v.gui = false
-      v.cpus = 5
-      v.memory = 25600
+      v.cpus = 4
+      v.memory = 15360
     end
     c.disksize.size = '70GB'
     c.vm.provision :shell, :path => "scripts/setup-initial-ubuntu.sh"
@@ -60,8 +60,8 @@ Vagrant.configure("2") do |config|
     c.vm.network "private_network", ip: "192.168.56.62"
     c.vm.provider "virtualbox" do |v|
       v.gui = false
-      v.cpus = 6
-      v.memory = 25600
+      v.cpus = 7
+      v.memory = 35840
     end
     c.disksize.size = '70GB'
     c.vm.provision :shell, :path => "scripts/setup-initial-ubuntu.sh"
