@@ -28,7 +28,7 @@ Vagrant.configure("2") do |config|
     c.vm.network "private_network", ip: "192.168.56.60"
     c.vm.provider "virtualbox" do |v|
       v.gui = false
-      v.cpus = 5
+      v.cpus = 4
       v.memory = 10240
     end
     c.disksize.size = '60GB'
