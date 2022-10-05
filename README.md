@@ -279,6 +279,110 @@ spec:
 EOF
 
 
+cat <<'EOF' > overlays/view/tap-gui-db.yml
+#@ load("@ytt:overlay", "overlay")
+#@overlay/match by=overlay.subset({"kind":"Deployment","metadata":{"name":"server"}})
+---
+spec:
+  #@overlay/match missing_ok=True
+  template:
+    spec:
+      containers:
+      #@overlay/match by="name"
+      - name: backstage
+        #@overlay/match missing_ok=True
+        envFrom:
+         - secretRef:
+             name: tap-gui-db
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: tap-gui-db
+  namespace: tap-gui
+  labels:
+    app.kubernetes.io/part-of: tap-gui-db
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tap-gui-db
+  namespace: tap-gui
+  labels:
+    app.kubernetes.io/part-of: tap-gui-db
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/part-of: tap-gui-db
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/part-of: tap-gui-db
+    spec:
+      initContainers:
+      - name: remove-lost-found
+        image: busybox
+        command:
+        - sh
+        - -c
+        - |
+          rm -fr /var/lib/postgresql/data/lost+found
+        volumeMounts:
+        - name: tap-gui-db
+          mountPath: /var/lib/postgresql/data
+      containers:
+      - image: bitnami/postgresql:14
+        name: postgres
+        envFrom:
+        - secretRef:
+            name: tap-gui-db
+        ports:
+        - containerPort: 5432
+          name: tap-gui-db
+        volumeMounts:
+        - name: tap-gui-db
+          mountPath: /var/lib/postgresql/data
+      volumes:
+      - name: tap-gui-db
+        persistentVolumeClaim:
+          claimName: tap-gui-db
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tap-gui-db
+  namespace: tap-gui
+  labels:
+    app.kubernetes.io/part-of: tap-gui-db
+spec:
+  ports:
+  - port: 5432
+  selector:
+    app.kubernetes.io/part-of: tap-gui-db
+---
+apiVersion: secretgen.k14s.io/v1alpha1
+kind: Password
+metadata:
+  name: tap-gui-db
+  namespace: tap-gui
+  labels:
+    app.kubernetes.io/part-of: tap-gui-db
+spec:
+  secretTemplate:
+    type: servicebinding.io/postgresql
+    stringData:
+      POSTGRES_USER: tap-gui
+      POSTGRES_PASSWORD: $(value)
+EOF
+
 cat <<EOF > overlays/view/tap-telemetry-remove.yml
 #@ load("@ytt:overlay", "overlay")
 #@overlay/match by=overlay.subset({"metadata":{"namespace":"tap-telemetry"}}), expects="1+"
@@ -319,6 +423,13 @@ tap_gui:
       baseUrl: https://tap-gui.${DOMAIN_NAME_VIEW}
       cors:
         origin: https://tap-gui.${DOMAIN_NAME_VIEW}
+      database:
+        client: pg
+        connection:
+          host: \${TAP_GUI_DB_SERVICE_HOST}
+          port: \${TAP_GUI_DB_SERVICE_PORT}
+          user: \${POSTGRES_USER}
+          password: \${POSTGRES_PASSWORD}
     catalog:
       locations:
       - type: url
@@ -364,6 +475,9 @@ package_overlays:
   secrets:
   - name: contour-loadbalancer-ip
   - name: contour-default-tls
+- name: tap-gui
+  secrets:
+  - name: tap-gui-db
 - name: tap-telemetry
   secrets:
   - name: tap-telemetry-remove
@@ -388,6 +502,12 @@ kubectl -n tap-install create secret generic contour-default-tls \
   -o yaml \
   --dry-run=client \
   --from-file=overlays/view/contour-default-tls.yml \
+  | kubectl apply -f- --kubeconfig kubeconfig-view
+
+kubectl -n tap-install create secret generic tap-gui-db \
+  -o yaml \
+  --dry-run=client \
+  --from-file=overlays/view/tap-gui-db.yml \
   | kubectl apply -f- --kubeconfig kubeconfig-view
 
 kubectl -n tap-install create secret generic tap-telemetry-remove \
