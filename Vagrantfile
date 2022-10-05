@@ -6,57 +6,68 @@ Vagrant.configure("2") do |config|
   config.vm.box = "ubuntu/jammy64"
   config.vm.synced_folder "./share", "/share" , type: "virtualbox"
 
-  (1..1).each do |n| # !! multi nfs is not supported yet !!
-    config.vm.define "nfs-#{n}" do |c|
-      c.vm.hostname = "nfs-#{n}.internal"
-      c.vm.network "public_network", ip: "192.168.11.5#{n}", bridge: "eno1"
-      c.vm.network "private_network", ip: "192.168.56.5#{n}"
-      c.vm.provider "virtualbox" do |v|
-        v.gui = false
-        v.cpus = 1
-        v.memory = 1024
-      end
-      c.disksize.size = '500GB'
-
-      c.vm.provision :shell, :path => "scripts/setup-initial-ubuntu.sh"
-      c.vm.provision :shell, :path => "scripts/setup-nfs.sh"
-      c.vm.provision :hosts, :sync_hosts => true
+  config.vm.define "nfs" do |c|
+    c.vm.hostname = "nfs.internal"
+    c.vm.network "public_network", ip: "192.168.11.50", bridge: "eno1"
+    c.vm.network "private_network", ip: "192.168.56.50"
+    c.vm.provider "virtualbox" do |v|
+      v.gui = false
+      v.cpus = 1
+      v.memory = 1024
     end
+    c.disksize.size = '500GB'
+
+    c.vm.provision :shell, :path => "scripts/setup-initial-ubuntu.sh"
+    c.vm.provision :shell, :path => "scripts/setup-nfs.sh"
+    c.vm.provision :hosts, :sync_hosts => true
   end
 
-  (1..3).each do |n| # !! multi controlplane is not supported yet !!
-    config.vm.define "controlplane-#{n}" do |c|
-      c.vm.hostname = "controlplane-#{n}.internal"
-      c.vm.network "public_network", ip: "192.168.11.6#{n}", bridge: "eno1"
-      c.vm.network "private_network", ip: "192.168.56.6#{n}"
-      c.vm.provider "virtualbox" do |v|
-        v.gui = false
-        v.cpus = 1
-        v.memory = 5120
-      end
-      c.disksize.size = '70GB'
-      c.vm.provision :shell, :path => "scripts/setup-initial-ubuntu.sh"
-      c.vm.provision :shell, :path => "scripts/setup-microk8s.sh"
-      c.vm.provision :shell, :path => "scripts/setup-microk8s-controlplane.sh", :args => ["controlplane-#{n}"]
-      c.vm.provision :hosts, :sync_hosts => true
+  config.vm.define "tap-view" do |c|
+    c.vm.hostname = "tap-view.internal"
+    c.vm.network "public_network", ip: "192.168.11.60", bridge: "eno1"
+    c.vm.network "private_network", ip: "192.168.56.60"
+    c.vm.provider "virtualbox" do |v|
+      v.gui = false
+      v.cpus = 5
+      v.memory = 10240
     end
+    c.disksize.size = '60GB'
+    c.vm.provision :shell, :path => "scripts/setup-initial-ubuntu.sh"
+    c.vm.provision :shell, :path => "scripts/setup-microk8s.sh"
+    c.vm.provision :shell, :path => "scripts/setup-microk8s-controlplane.sh", :args => ["controlplane-1"]
+    c.vm.provision :hosts, :sync_hosts => true
   end
 
-  (1..4).each do |n|
-    config.vm.define "worker-#{n}" do |c|
-      c.vm.hostname = "worker-#{n}.internal"
-      c.vm.network "public_network", ip: "192.168.11.7#{n}", bridge: "eno1"
-      c.vm.network "private_network", ip: "192.168.56.7#{n}"
-      c.vm.provider "virtualbox" do |v|
-        v.gui = false
-        v.cpus = 3
-        v.memory = 12288
-      end
-      c.disksize.size = '70GB'
-      c.vm.provision :shell, :path => "scripts/setup-initial-ubuntu.sh"
-      c.vm.provision :shell, :path => "scripts/setup-microk8s.sh"
-      c.vm.provision :shell, :path => "scripts/setup-microk8s-worker.sh", :args => ["controlplane-#{(n - 1) % 3 + 1}"]
-      c.vm.provision :hosts, :sync_hosts => true      
+  config.vm.define "tap-build" do |c|
+    c.vm.hostname = "tap-build.internal"
+    c.vm.network "public_network", ip: "192.168.11.61", bridge: "eno1"
+    c.vm.network "private_network", ip: "192.168.56.61"
+    c.vm.provider "virtualbox" do |v|
+      v.gui = false
+      v.cpus = 5
+      v.memory = 25600
     end
-  end  
+    c.disksize.size = '70GB'
+    c.vm.provision :shell, :path => "scripts/setup-initial-ubuntu.sh"
+    c.vm.provision :shell, :path => "scripts/setup-microk8s.sh"
+    c.vm.provision :shell, :path => "scripts/setup-microk8s-controlplane.sh", :args => ["controlplane-2"]
+    c.vm.provision :hosts, :sync_hosts => true
+  end
+
+  config.vm.define "tap-run" do |c|
+    c.vm.hostname = "tap-run.internal"
+    c.vm.network "public_network", ip: "192.168.11.62", bridge: "eno1"
+    c.vm.network "private_network", ip: "192.168.56.62"
+    c.vm.provider "virtualbox" do |v|
+      v.gui = false
+      v.cpus = 6
+      v.memory = 25600
+    end
+    c.disksize.size = '70GB'
+    c.vm.provision :shell, :path => "scripts/setup-initial-ubuntu.sh"
+    c.vm.provision :shell, :path => "scripts/setup-microk8s.sh"
+    c.vm.provision :shell, :path => "scripts/setup-microk8s-controlplane.sh", :args => ["controlplane-3"]
+    c.vm.provision :hosts, :sync_hosts => true
+  end
+  
 end

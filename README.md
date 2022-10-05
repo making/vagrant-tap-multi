@@ -28,29 +28,29 @@ vagrant up --provision
 Retrieve k8s configs.
 
 ```
-vagrant ssh controlplane-1 -c "microk8s config | sed \"s/10.0.2.15/\$(ip a show enp0s8 | grep inet | grep -v inet6 | awk '{print \$2}' | cut -f1 -d/)/\"" | sed  's/microk8s/tap-run/g' | sed  's/admin/admin-run/g'> kubeconfig-run
-vagrant ssh controlplane-2 -c "microk8s config | sed \"s/10.0.2.15/\$(ip a show enp0s8 | grep inet | grep -v inet6 | awk '{print \$2}' | cut -f1 -d/)/\"" | sed  's/microk8s/tap-build/g' | sed  's/admin/admin-build/g' > kubeconfig-build
-vagrant ssh controlplane-3 -c "microk8s config | sed \"s/10.0.2.15/\$(ip a show enp0s8 | grep inet | grep -v inet6 | awk '{print \$2}' | cut -f1 -d/)/\"" | sed  's/microk8s/tap-view/g' | sed  's/admin/admin-view/g' > kubeconfig-view
+vagrant ssh tap-view -c "microk8s config | sed \"s/10.0.2.15/\$(ip a show enp0s8 | grep inet | grep -v inet6 | awk '{print \$2}' | cut -f1 -d/)/\"" | sed  's/microk8s/tap-view/g' | sed  's/admin/admin-view/g' > kubeconfig-view
+vagrant ssh tap-build -c "microk8s config | sed \"s/10.0.2.15/\$(ip a show enp0s8 | grep inet | grep -v inet6 | awk '{print \$2}' | cut -f1 -d/)/\"" | sed  's/microk8s/tap-build/g' | sed  's/admin/admin-build/g' > kubeconfig-build
+vagrant ssh tap-run -c "microk8s config | sed \"s/10.0.2.15/\$(ip a show enp0s8 | grep inet | grep -v inet6 | awk '{print \$2}' | cut -f1 -d/)/\"" | sed  's/microk8s/tap-run/g' | sed  's/admin/admin-run/g'> kubeconfig-run
 KUBECONFIG=kubeconfig-run:kubeconfig-build:kubeconfig-view kubectl config view --flatten > kubeconfig
 ```
 
 Check the node and pod status on each cluster.
 
 ```
-kubectl get node,pod -A -owide --kubeconfig kubeconfig-run
-kubectl get node,pod -A -owide --kubeconfig kubeconfig-build
 kubectl get node,pod -A -owide --kubeconfig kubeconfig-view
+kubectl get node,pod -A -owide --kubeconfig kubeconfig-build
+kubectl get node,pod -A -owide --kubeconfig kubeconfig-run
 ```
 
 Install kapp-controller and secretgen-controller on each cluster.
 
 ```
-curl -sL https://github.com/vmware-tanzu/carvel-kapp-controller/releases/latest/download/release.yml | kubectl apply -f- --kubeconfig kubeconfig-run
-curl -sL https://github.com/vmware-tanzu/carvel-secretgen-controller/releases/latest/download/release.yml | kubectl apply -f- --kubeconfig kubeconfig-run
-curl -sL https://github.com/vmware-tanzu/carvel-kapp-controller/releases/latest/download/release.yml | kubectl apply -f- --kubeconfig kubeconfig-build
-curl -sL https://github.com/vmware-tanzu/carvel-secretgen-controller/releases/latest/download/release.yml | kubectl apply -f- --kubeconfig kubeconfig-build
 curl -sL https://github.com/vmware-tanzu/carvel-kapp-controller/releases/latest/download/release.yml | kubectl apply -f- --kubeconfig kubeconfig-view
 curl -sL https://github.com/vmware-tanzu/carvel-secretgen-controller/releases/latest/download/release.yml | kubectl apply -f- --kubeconfig kubeconfig-view
+curl -sL https://github.com/vmware-tanzu/carvel-kapp-controller/releases/latest/download/release.yml | kubectl apply -f- --kubeconfig kubeconfig-build
+curl -sL https://github.com/vmware-tanzu/carvel-secretgen-controller/releases/latest/download/release.yml | kubectl apply -f- --kubeconfig kubeconfig-build
+curl -sL https://github.com/vmware-tanzu/carvel-kapp-controller/releases/latest/download/release.yml | kubectl apply -f- --kubeconfig kubeconfig-run
+curl -sL https://github.com/vmware-tanzu/carvel-secretgen-controller/releases/latest/download/release.yml | kubectl apply -f- --kubeconfig kubeconfig-run
 ```
 
 ## Create Service Account for TAP GUI in Run/Build cluster
@@ -164,8 +164,8 @@ EOF
 ```
 
 ```
-kubectl apply -f tap-gui/tap-gui-viewer-service-account-rbac.yaml --kubeconfig kubeconfig-run
 kubectl apply -f tap-gui/tap-gui-viewer-service-account-rbac.yaml --kubeconfig kubeconfig-build
+kubectl apply -f tap-gui/tap-gui-viewer-service-account-rbac.yaml --kubeconfig kubeconfig-run
 ```
 
 ```
@@ -204,7 +204,7 @@ tanzu package repository add tanzu-tap-repository \
 ```
 
 ```yaml
-ENVOY_IP_VIEW=$(vagrant ssh controlplane-3 -c "ip a show enp0s8 | grep inet | grep -v inet6 | awk '{print \$2}' | cut -f1 -d/" | awk -F '.' '{print $1 "." $2 "." $3}').240
+ENVOY_IP_VIEW=$(vagrant ssh tap-view -c "ip a show enp0s8 | grep inet | grep -v inet6 | awk '{print \$2}' | cut -f1 -d/" | awk -F '.' '{print $1 "." $2 "." $3}').220
 DOMAIN_NAME_VIEW=$(echo ${ENVOY_IP_VIEW} | sed 's/\./-/g').sslip.io
 
 mkdir -p overlays/view
@@ -408,7 +408,7 @@ tanzu package install tap \
 ```
 
 ```
-while [ "$(kubectl -n tap-install get app tap -o=jsonpath='{.status.friendlyDescription}') --kubeconfig kubeconfig-view" != "Reconcile succeeded" ];do
+while [ "$(kubectl -n tap-install get app tap -o=jsonpath='{.status.friendlyDescription}' --kubeconfig kubeconfig-view)" != "Reconcile succeeded" ];do
   date
   kubectl get app -n tap-install --kubeconfig kubeconfig-view
   echo "---------------------------------------------------------------------"
@@ -420,56 +420,54 @@ echo "✅ Install succeeded"
 
 ```
 $ kubectl get pod,svc,httpproxy -A --kubeconfig kubeconfig-view -owide
-NAMESPACE              NAME                                                  READY   STATUS    RESTARTS   AGE   IP              NODE             NOMINATED NODE   READINESS GATES
-kube-system            pod/csi-nfs-node-szfbc                                3/3     Running   0          9h    192.168.11.63   controlplane-3   <none>           <none>
-kube-system            pod/calico-node-2j8th                                 1/1     Running   0          9h    192.168.11.73   worker-3         <none>           <none>
-kube-system            pod/calico-node-x2v6h                                 1/1     Running   0          9h    192.168.11.63   controlplane-3   <none>           <none>
-kube-system            pod/csi-nfs-node-mqsp8                                3/3     Running   0          9h    192.168.11.73   worker-3         <none>           <none>
-metallb-system         pod/speaker-xqj2l                                     1/1     Running   0          8h    192.168.11.73   worker-3         <none>           <none>
-metallb-system         pod/controller-558b7b958-bvkrh                        1/1     Running   0          8h    10.1.97.193     worker-3         <none>           <none>
-kube-system            pod/csi-nfs-controller-94b9c7bc6-94qzx                3/3     Running   0          8h    192.168.11.73   worker-3         <none>           <none>
-kube-system            pod/coredns-64c6478b6c-j448b                          1/1     Running   0          8h    10.1.97.194     worker-3         <none>           <none>
-kube-system            pod/metrics-server-679c5f986d-xcgw5                   1/1     Running   0          8h    10.1.97.195     worker-3         <none>           <none>
-kube-system            pod/calico-kube-controllers-5bc8d5fbfb-dvrk7          1/1     Running   0          8h    10.1.97.196     worker-3         <none>           <none>
-metallb-system         pod/speaker-qpsz7                                     1/1     Running   0          8h    192.168.11.63   controlplane-3   <none>           <none>
-kapp-controller        pod/kapp-controller-6944b4ff88-gn87s                  2/2     Running   0          8h    10.1.97.197     worker-3         <none>           <none>
-secretgen-controller   pod/secretgen-controller-7b77c88b9b-mddzm             1/1     Running   0          8h    10.1.97.198     worker-3         <none>           <none>
-cert-manager           pod/cert-manager-56c8954599-ttv57                     1/1     Running   0          23m   10.1.87.133     controlplane-3   <none>           <none>
-cert-manager           pod/cert-manager-cainjector-84787b65d5-rhvt5          1/1     Running   0          23m   10.1.97.200     worker-3         <none>           <none>
-cert-manager           pod/cert-manager-webhook-68b7bbff7d-4mrsp             1/1     Running   0          23m   10.1.97.201     worker-3         <none>           <none>
-accelerator-system     pod/acc-server-6686c9747f-ns7mp                       1/1     Running   0          22m   10.1.87.134     controlplane-3   <none>           <none>
-accelerator-system     pod/accelerator-controller-manager-75d46f5469-k9f5x   1/1     Running   0          22m   10.1.97.204     worker-3         <none>           <none>
-accelerator-system     pod/acc-engine-d44f94665-czfnw                        1/1     Running   0          22m   10.1.97.203     worker-3         <none>           <none>
-app-live-view          pod/application-live-view-server-647d7884b6-gsrlj     1/1     Running   0          20m   10.1.97.205     worker-3         <none>           <none>
-metadata-store         pod/metadata-store-db-0                               1/1     Running   0          20m   10.1.97.206     worker-3         <none>           <none>
-tap-gui                pod/server-cbf48499c-mfm7h                            1/1     Running   0          20m   10.1.87.135     controlplane-3   <none>           <none>
-tanzu-system-ingress   pod/contour-749666d776-2t5fz                          1/1     Running   0          20m   10.1.97.208     worker-3         <none>           <none>
-tanzu-system-ingress   pod/envoy-brv4g                                       2/2     Running   0          20m   10.1.97.207     worker-3         <none>           <none>
-tanzu-system-ingress   pod/envoy-g8l9r                                       2/2     Running   0          20m   10.1.87.136     controlplane-3   <none>           <none>
-metadata-store         pod/metadata-store-app-5875587b89-rkpdd               2/2     Running   0          20m   10.1.87.137     controlplane-3   <none>           <none>
+NAMESPACE              NAME                                                  READY   STATUS      RESTARTS   AGE     IP              NODE       NOMINATED NODE   READINESS GATES
+kube-system            pod/calico-node-nrs2q                                 1/1     Running     0          94m     192.168.11.60   tap-view   <none>           <none>
+metallb-system         pod/speaker-rt8kx                                     1/1     Running     0          91m     192.168.11.60   tap-view   <none>           <none>
+kube-system            pod/coredns-64c6478b6c-hmp8c                          1/1     Running     0          91m     10.1.11.3       tap-view   <none>           <none>
+kube-system            pod/metrics-server-679c5f986d-s5qsd                   1/1     Running     0          91m     10.1.11.1       tap-view   <none>           <none>
+metallb-system         pod/controller-558b7b958-xc9d5                        1/1     Running     0          91m     10.1.11.2       tap-view   <none>           <none>
+kube-system            pod/calico-kube-controllers-6d89d85f8d-8sg54          1/1     Running     0          94m     10.1.11.4       tap-view   <none>           <none>
+kube-system            pod/csi-nfs-controller-94b9c7bc6-95tsd                3/3     Running     0          91m     192.168.11.60   tap-view   <none>           <none>
+kube-system            pod/csi-nfs-node-lg7jm                                3/3     Running     0          91m     192.168.11.60   tap-view   <none>           <none>
+kapp-controller        pod/kapp-controller-6944b4ff88-rgnxc                  2/2     Running     0          23m     10.1.11.5       tap-view   <none>           <none>
+secretgen-controller   pod/secretgen-controller-7b77c88b9b-78ntp             1/1     Running     0          23m     10.1.11.6       tap-view   <none>           <none>
+cert-manager           pod/cert-manager-webhook-654f8798d8-x4m4d             1/1     Running     0          12m     10.1.11.7       tap-view   <none>           <none>
+cert-manager           pod/cert-manager-cainjector-59876d677f-kp7rk          1/1     Running     0          12m     10.1.11.8       tap-view   <none>           <none>
+cert-manager           pod/cert-manager-6549557777-bhjss                     1/1     Running     0          12m     10.1.11.9       tap-view   <none>           <none>
+tanzu-system-ingress   pod/contour-546b89686b-67hl9                          1/1     Running     0          11m     10.1.11.10      tap-view   <none>           <none>
+tanzu-system-ingress   pod/envoy-wrjmq                                       2/2     Running     0          11m     10.1.11.11      tap-view   <none>           <none>
+app-live-view          pod/application-live-view-server-8b457b77c-n879b      1/1     Running     0          10m     10.1.11.12      tap-view   <none>           <none>
+tap-gui                pod/server-7f67f8c46-7zsbf                            1/1     Running     0          10m     10.1.11.13      tap-view   <none>           <none>
+accelerator-system     pod/acc-engine-59b6df8f79-gnwjb                       1/1     Running     0          10m     10.1.11.15      tap-view   <none>           <none>
+accelerator-system     pod/acc-server-685bd55557-b2rpb                       1/1     Running     0          10m     10.1.11.16      tap-view   <none>           <none>
+metadata-store         pod/metadata-store-db-0                               1/1     Running     0          10m     10.1.11.18      tap-view   <none>           <none>
+metadata-store         pod/metadata-store-app-56b85745b7-w54jb               2/2     Running     0          2m30s   10.1.11.21      tap-view   <none>           <none>
+housekeeping           pod/housekeeping-27748507-b7jw5                       0/1     Completed   0          63s     10.1.11.23      tap-view   <none>           <none>
+accelerator-system     pod/accelerator-controller-manager-79474f4579-5n277   0/1     Running     0          2s      10.1.11.25      tap-view   <none>           <none>
+housekeeping           pod/housekeeping-27748508-bcktg                       0/1     Completed   0          3s      10.1.11.24      tap-view   <none>           <none>
 
 NAMESPACE              NAME                                 TYPE           CLUSTER-IP       EXTERNAL-IP      PORT(S)                      AGE   SELECTOR
-default                service/kubernetes                   ClusterIP      10.152.183.1     <none>           443/TCP                      9h    <none>
-kube-system            service/kube-dns                     ClusterIP      10.152.183.10    <none>           53/UDP,53/TCP,9153/TCP       9h    k8s-app=kube-dns
-kube-system            service/metrics-server               ClusterIP      10.152.183.118   <none>           443/TCP                      9h    k8s-app=metrics-server
-kapp-controller        service/packaging-api                ClusterIP      10.152.183.43    <none>           443/TCP                      8h    app=kapp-controller
-cert-manager           service/cert-manager                 ClusterIP      10.152.183.227   <none>           9402/TCP                     23m   app.kubernetes.io/component=controller,app.kubernetes.io/instance=cert-manager,app.kubernetes.io/name=cert-manager,kapp.k14s.io/app=1664636608015329546
-cert-manager           service/cert-manager-webhook         ClusterIP      10.152.183.197   <none>           443/TCP                      23m   app.kubernetes.io/component=webhook,app.kubernetes.io/instance=cert-manager,app.kubernetes.io/name=webhook,kapp.k14s.io/app=1664636608015329546
-accelerator-system     service/acc-engine                   ClusterIP      10.152.183.131   <none>           80/TCP                       22m   app.kubernetes.io/name=acc-engine,kapp.k14s.io/app=1664636681090077326
-accelerator-system     service/acc-server                   ClusterIP      10.152.183.221   <none>           80/TCP                       22m   app.kubernetes.io/name=acc-server,kapp.k14s.io/app=1664636681090077326
-app-live-view          service/application-live-view-7000   ClusterIP      10.152.183.219   <none>           7000/TCP                     20m   app=application-live-view-server,kapp.k14s.io/app=1664636681253246221
-app-live-view          service/application-live-view-5112   ClusterIP      10.152.183.224   <none>           80/TCP                       20m   app=application-live-view-server,kapp.k14s.io/app=1664636681253246221
-tap-gui                service/server                       ClusterIP      10.152.183.113   <none>           7000/TCP                     20m   app=backstage,component=backstage-server,kapp.k14s.io/app=1664636681127492535
-metadata-store         service/metadata-store-app           ClusterIP      10.152.183.145   <none>           8443/TCP                     20m   app=metadata-store-app,kapp.k14s.io/app=1664636681911470145
-tanzu-system-ingress   service/contour                      ClusterIP      10.152.183.199   <none>           8001/TCP                     20m   app=contour,kapp.k14s.io/app=1664636772870161992
-tanzu-system-ingress   service/envoy                        LoadBalancer   10.152.183.11    192.168.11.240   80:31670/TCP,443:30724/TCP   20m   app=envoy,kapp.k14s.io/app=1664636772870161992
-metadata-store         service/metadata-store-db            ClusterIP      10.152.183.165   <none>           5432/TCP                     20m   app=metadata-store-db,kapp.k14s.io/app=1664636681911470145,tier=postgres
+default                service/kubernetes                   ClusterIP      10.152.183.1     <none>           443/TCP                      94m   <none>
+kube-system            service/kube-dns                     ClusterIP      10.152.183.10    <none>           53/UDP,53/TCP,9153/TCP       92m   k8s-app=kube-dns
+kube-system            service/metrics-server               ClusterIP      10.152.183.41    <none>           443/TCP                      92m   k8s-app=metrics-server
+kapp-controller        service/packaging-api                ClusterIP      10.152.183.138   <none>           443/TCP                      23m   app=kapp-controller
+cert-manager           service/cert-manager                 ClusterIP      10.152.183.79    <none>           9402/TCP                     12m   app.kubernetes.io/component=controller,app.kubernetes.io/instance=cert-manager,app.kubernetes.io/name=cert-manager,kapp.k14s.io/app=1664909702154750971
+cert-manager           service/cert-manager-webhook         ClusterIP      10.152.183.157   <none>           443/TCP                      12m   app.kubernetes.io/component=webhook,app.kubernetes.io/instance=cert-manager,app.kubernetes.io/name=webhook,kapp.k14s.io/app=1664909702154750971
+tanzu-system-ingress   service/envoy                        LoadBalancer   10.152.183.182   192.168.11.220   80:31888/TCP,443:30233/TCP   11m   app=envoy,kapp.k14s.io/app=1664909796010311222
+tanzu-system-ingress   service/contour                      ClusterIP      10.152.183.183   <none>           8001/TCP                     11m   app=contour,kapp.k14s.io/app=1664909796010311222
+app-live-view          service/application-live-view-7000   ClusterIP      10.152.183.21    <none>           7000/TCP                     10m   app=application-live-view-server,kapp.k14s.io/app=1664909857180071324
+app-live-view          service/application-live-view-5112   ClusterIP      10.152.183.7     <none>           80/TCP                       10m   app=application-live-view-server,kapp.k14s.io/app=1664909857180071324
+metadata-store         service/metadata-store-app           ClusterIP      10.152.183.46    <none>           8443/TCP                     10m   app=metadata-store-app,kapp.k14s.io/app=1664909857530665799
+tap-gui                service/server                       ClusterIP      10.152.183.73    <none>           7000/TCP                     10m   app=backstage,component=backstage-server,kapp.k14s.io/app=1664909857571002828
+metadata-store         service/metadata-store-db            ClusterIP      10.152.183.134   <none>           5432/TCP                     10m   app=metadata-store-db,kapp.k14s.io/app=1664909857530665799,tier=postgres
+accelerator-system     service/acc-engine                   ClusterIP      10.152.183.42    <none>           80/TCP                       10m   app.kubernetes.io/name=acc-engine,kapp.k14s.io/app=1664909857650065989
+accelerator-system     service/acc-server                   ClusterIP      10.152.183.223   <none>           80/TCP                       10m   app.kubernetes.io/name=acc-server,kapp.k14s.io/app=1664909857650065989
 
 NAMESPACE            NAME                                                 FQDN                                     TLS SECRET                             STATUS   STATUS DESCRIPTION
-metadata-store       httpproxy.projectcontour.io/metadata-store-ingress   metadata-store.192-168-11-240.sslip.io   ingress-cert                           valid    Valid HTTPProxy
-tap-gui              httpproxy.projectcontour.io/tap-gui                  tap-gui.192-168-11-240.sslip.io          tanzu-system-ingress/tap-default-tls   valid    Valid HTTPProxy
-app-live-view        httpproxy.projectcontour.io/appliveview              appliveview.192-168-11-240.sslip.io      tanzu-system-ingress/tap-default-tls   valid    Valid HTTPProxy
-accelerator-system   httpproxy.projectcontour.io/accelerator              accelerator.192-168-11-240.sslip.io      tanzu-system-ingress/tap-default-tls   valid    Valid HTTPProxy
+app-live-view        httpproxy.projectcontour.io/appliveview              appliveview.192-168-11-220.sslip.io      tanzu-system-ingress/tap-default-tls   valid    Valid HTTPProxy
+tap-gui              httpproxy.projectcontour.io/tap-gui                  tap-gui.192-168-11-220.sslip.io          tanzu-system-ingress/tap-default-tls   valid    Valid HTTPProxy
+accelerator-system   httpproxy.projectcontour.io/accelerator              accelerator.192-168-11-220.sslip.io      tanzu-system-ingress/tap-default-tls   valid    Valid HTTPProxy
+metadata-store       httpproxy.projectcontour.io/metadata-store-ingress   metadata-store.192-168-11-220.sslip.io   ingress-cert                           valid    Valid HTTPProxy
 ```
 
 ```
@@ -625,7 +623,7 @@ tanzu package install full-tbs-deps \
 ```
 
 ```
-while [ "$(kubectl -n tap-install get app tap -o=jsonpath='{.status.friendlyDescription}') --kubeconfig kubeconfig-build" != "Reconcile succeeded" ];do
+while [ "$(kubectl -n tap-install get app tap -o=jsonpath='{.status.friendlyDescription}' --kubeconfig kubeconfig-build)" != "Reconcile succeeded" ];do
   date
   kubectl get app -n tap-install --kubeconfig kubeconfig-build
   echo "---------------------------------------------------------------------"
@@ -724,7 +722,7 @@ tanzu package repository add tanzu-tap-repository \
 ```
 
 ```yaml
-ENVOY_IP_RUN=$(vagrant ssh controlplane-1 -c "ip a show enp0s8 | grep inet | grep -v inet6 | awk '{print \$2}' | cut -f1 -d/" | awk -F '.' '{print $1 "." $2 "." $3}').220
+ENVOY_IP_RUN=$(vagrant ssh tap-run -c "ip a show enp0s8 | grep inet | grep -v inet6 | awk '{print \$2}' | cut -f1 -d/" | awk -F '.' '{print $1 "." $2 "." $3}').240
 DOMAIN_NAME_RUN=$(echo ${ENVOY_IP_RUN} | sed 's/\./-/g').sslip.io
 
 mkdir -p overlays/run
@@ -920,7 +918,7 @@ tanzu package install tap \
 ```
 
 ```
-while [ "$(kubectl -n tap-install get app tap -o=jsonpath='{.status.friendlyDescription}') --kubeconfig kubeconfig-run" != "Reconcile succeeded" ];do
+while [ "$(kubectl -n tap-install get app tap -o=jsonpath='{.status.friendlyDescription}' --kubeconfig kubeconfig-run)" != "Reconcile succeeded" ];do
   date
   kubectl get app -n tap-install --kubeconfig kubeconfig-run
   echo "---------------------------------------------------------------------"
