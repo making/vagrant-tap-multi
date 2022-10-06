@@ -992,6 +992,9 @@ package_overlays:
 - name: tap-telemetry
   secrets:
   - name: tap-telemetry-remove
+
+excluded_packages:
+- image-policy-webhook.signing.apps.tanzu.vmware.com
 EOF
 ```
 
