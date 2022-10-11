@@ -6,3 +6,4 @@ kubeconfig*
 bk
 tap-gui
 rbac.yaml
+certs
