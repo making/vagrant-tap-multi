@@ -858,6 +858,7 @@ supply_chain: basic
 appliveview_connector:
   backend:
     ingressEnabled: true
+    host: appliveview.${DOMAIN_NAME_VIEW}
     caCertData: |
 $(cat certs/ca.crt | sed 's/^/      /g')
 api_auto_registration:
