@@ -403,7 +403,6 @@ shared:
 
 contour:
   infrastructure_provider: "vsphere"
-  namespace: tanzu-system-ingress
   contour:
     replicas: 1
     configFileContents:
@@ -469,8 +468,6 @@ accelerator:
   tls:
     secret_name: tap-default-tls
     namespace: tanzu-system-ingress
-  server:
-    service_type: ClusterIP
 
 package_overlays:
 - name: contour
@@ -838,9 +835,11 @@ profile: run
 
 ceip_policy_disclosed: true
 
+shared:
+  ingress_domain: ${DOMAIN_NAME_RUN}
+
 contour:
   infrastructure_provider: "vsphere"
-  namespace: tanzu-system-ingress
   contour:
     replicas: 1
     configFileContents:
@@ -850,7 +849,6 @@ contour:
       type: LoadBalancer
 
 cnrs:
-  domain_name: ${DOMAIN_NAME_RUN}
   domain_template: "{{.Name}}-{{.Namespace}}.{{.Domain}}"
   default_tls_secret: tanzu-system-ingress/tap-default-tls
   provider: local
@@ -860,8 +858,6 @@ supply_chain: basic
 appliveview_connector:
   backend:
     ingressEnabled: true
-    sslDisabled: false
-    host: appliveview.${DOMAIN_NAME_VIEW}
     caCertData: |
 $(cat certs/ca.crt | sed 's/^/      /g')
 api_auto_registration:
