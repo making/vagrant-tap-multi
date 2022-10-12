@@ -488,7 +488,6 @@ excluded_packages:
 - learningcenter.tanzu.vmware.com
 - workshops.learningcenter.tanzu.vmware.com
 - api-portal.tanzu.vmware.com
-- fluxcd.source.controller.tanzu.vmware.com
 - controller.source.apps.tanzu.vmware.com
 EOF
 ```
